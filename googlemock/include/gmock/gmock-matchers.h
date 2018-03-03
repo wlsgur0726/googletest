@@ -47,10 +47,9 @@
 #include <string>
 #include <utility>
 #include <vector>
-
+#include "gtest/gtest.h"
 #include "gmock/internal/gmock-internal-utils.h"
 #include "gmock/internal/gmock-port.h"
-#include "gtest/gtest.h"
 
 #if GTEST_HAS_STD_INITIALIZER_LIST_
 # include <initializer_list>  // NOLINT -- must be after gtest.h
@@ -186,7 +185,7 @@ class StringMatchResultListener : public MatchResultListener {
   StringMatchResultListener() : MatchResultListener(&ss_) {}
 
   // Returns the explanation accumulated so far.
-  internal::string str() const { return ss_.str(); }
+  std::string str() const { return ss_.str(); }
 
   // Clears the explanation accumulated so far.
   void Clear() { ss_.str(""); }
@@ -515,7 +514,7 @@ template <typename T, typename M>
 class MatcherCastImpl {
  public:
   static Matcher<T> Cast(const M& polymorphic_matcher_or_value) {
-    // M can be a polymorhic matcher, in which case we want to use
+    // M can be a polymorphic matcher, in which case we want to use
     // its conversion operator to create Matcher<T>.  Or it can be a value
     // that should be passed to the Matcher<T>'s constructor.
     //
@@ -646,7 +645,7 @@ class SafeMatcherCastImpl {
     // type U.
     GTEST_COMPILE_ASSERT_(
         internal::is_reference<T>::value || !internal::is_reference<U>::value,
-        cannot_convert_non_referentce_arg_to_reference);
+        cannot_convert_non_reference_arg_to_reference);
     // In case both T and U are arithmetic types, enforce that the
     // conversion is not lossy.
     typedef GTEST_REMOVE_REFERENCE_AND_CONST_(T) RawT;
@@ -675,7 +674,7 @@ Matcher<T> A();
 namespace internal {
 
 // If the explanation is not empty, prints it to the ostream.
-inline void PrintIfNotEmpty(const internal::string& explanation,
+inline void PrintIfNotEmpty(const std::string& explanation,
                             ::std::ostream* os) {
   if (explanation != "" && os != NULL) {
     *os << ", " << explanation;
@@ -685,11 +684,11 @@ inline void PrintIfNotEmpty(const internal::string& explanation,
 // Returns true if the given type name is easy to read by a human.
 // This is used to decide whether printing the type of a value might
 // be helpful.
-inline bool IsReadableTypeName(const string& type_name) {
+inline bool IsReadableTypeName(const std::string& type_name) {
   // We consider a type name readable if it's short or doesn't contain
   // a template or function type.
   return (type_name.length() <= 20 ||
-          type_name.find_first_of("<(") == string::npos);
+          type_name.find_first_of("<(") == std::string::npos);
 }
 
 // Matches the value against the given matcher, prints the value and explains
@@ -711,7 +710,7 @@ bool MatchPrintAndExplain(Value& value, const Matcher<T>& matcher,
 
   UniversalPrint(value, listener->stream());
 #if GTEST_HAS_RTTI
-  const string& type_name = GetTypeName<Value>();
+  const std::string& type_name = GetTypeName<Value>();
   if (IsReadableTypeName(type_name))
     *listener->stream() << " (of type " << type_name << ")";
 #endif
@@ -1335,17 +1334,17 @@ class MatchesRegexMatcher {
   //   wchar_t*
   template <typename CharType>
   bool MatchAndExplain(CharType* s, MatchResultListener* listener) const {
-    return s != NULL && MatchAndExplain(internal::string(s), listener);
+    return s != NULL && MatchAndExplain(std::string(s), listener);
   }
 
-  // Matches anything that can convert to internal::string.
+  // Matches anything that can convert to std::string.
   //
-  // This is a template, not just a plain function with const internal::string&,
+  // This is a template, not just a plain function with const std::string&,
   // because StringPiece has some interfering non-explicit constructors.
   template <class MatcheeStringType>
   bool MatchAndExplain(const MatcheeStringType& s,
                        MatchResultListener* /* listener */) const {
-    const internal::string& s2(s);
+    const std::string& s2(s);
     return full_match_ ? RE::FullMatch(s2, *regex_) :
         RE::PartialMatch(s2, *regex_);
   }
@@ -1353,13 +1352,13 @@ class MatchesRegexMatcher {
   void DescribeTo(::std::ostream* os) const {
     *os << (full_match_ ? "matches" : "contains")
         << " regular expression ";
-    UniversalPrinter<internal::string>::Print(regex_->pattern(), os);
+    UniversalPrinter<std::string>::Print(regex_->pattern(), os);
   }
 
   void DescribeNegationTo(::std::ostream* os) const {
     *os << "doesn't " << (full_match_ ? "match" : "contain")
         << " regular expression ";
-    UniversalPrinter<internal::string>::Print(regex_->pattern(), os);
+    UniversalPrinter<std::string>::Print(regex_->pattern(), os);
   }
 
  private:
@@ -1526,8 +1525,8 @@ class BothOfMatcherImpl : public MatcherInterface<T> {
     }
 
     // Otherwise we need to explain why *both* of them match.
-    const internal::string s1 = listener1.str();
-    const internal::string s2 = listener2.str();
+    const std::string s1 = listener1.str();
+    const std::string s2 = listener2.str();
 
     if (s1 == "") {
       *listener << s2;
@@ -1551,7 +1550,7 @@ class BothOfMatcherImpl : public MatcherInterface<T> {
 // MatcherList provides mechanisms for storing a variable number of matchers in
 // a list structure (ListType) and creating a combining matcher from such a
 // list.
-// The template is defined recursively using the following template paramters:
+// The template is defined recursively using the following template parameters:
 //   * kSize is the length of the MatcherList.
 //   * Head is the type of the first matcher of the list.
 //   * Tail denotes the types of the remaining matchers of the list.
@@ -1698,8 +1697,8 @@ class EitherOfMatcherImpl : public MatcherInterface<T> {
     }
 
     // Otherwise we need to explain why *both* of them fail.
-    const internal::string s1 = listener1.str();
-    const internal::string s2 = listener2.str();
+    const std::string s1 = listener1.str();
+    const std::string s2 = listener2.str();
 
     if (s1 == "") {
       *listener << s2;
@@ -2123,7 +2122,7 @@ class WhenDynamicCastToMatcherBase {
  protected:
   const Matcher<To> matcher_;
 
-  static string GetToName() {
+  static std::string GetToName() {
 #if GTEST_HAS_RTTI
     return GetTypeName<To>();
 #else  // GTEST_HAS_RTTI
@@ -2232,7 +2231,10 @@ class FieldMatcher {
 
 // Implements the Property() matcher for matching a property
 // (i.e. return value of a getter method) of an object.
-template <typename Class, typename PropertyType>
+//
+// Property is a const-qualified member function of Class returning
+// PropertyType.
+template <typename Class, typename PropertyType, typename Property>
 class PropertyMatcher {
  public:
   // The property may have a reference type, so 'const PropertyType&'
@@ -2241,8 +2243,7 @@ class PropertyMatcher {
   // PropertyType being a reference or not.
   typedef GTEST_REFERENCE_TO_CONST_(PropertyType) RefToConstProperty;
 
-  PropertyMatcher(PropertyType (Class::*property)() const,
-                  const Matcher<RefToConstProperty>& matcher)
+  PropertyMatcher(Property property, const Matcher<RefToConstProperty>& matcher)
       : property_(property), matcher_(matcher) {}
 
   void DescribeTo(::std::ostream* os) const {
@@ -2295,7 +2296,7 @@ class PropertyMatcher {
     return MatchAndExplainImpl(false_type(), *p, listener);
   }
 
-  PropertyType (Class::*property_)() const;
+  Property property_;
   const Matcher<RefToConstProperty> matcher_;
 
   GTEST_DISALLOW_ASSIGN_(PropertyMatcher);
@@ -2378,7 +2379,7 @@ class ResultOfMatcher {
 
    private:
     // Functors often define operator() as non-const method even though
-    // they are actualy stateless. But we need to use them even when
+    // they are actually stateless. But we need to use them even when
     // 'this' is a const pointer. It's the user's responsibility not to
     // use stateful callables with ResultOf(), which does't guarantee
     // how many times the callable will be invoked.
@@ -2953,7 +2954,7 @@ class KeyMatcherImpl : public MatcherInterface<PairType> {
     StringMatchResultListener inner_listener;
     const bool match = inner_matcher_.MatchAndExplain(key_value.first,
                                                       &inner_listener);
-    const internal::string explanation = inner_listener.str();
+    const std::string explanation = inner_listener.str();
     if (explanation != "") {
       *listener << "whose first field is a value " << explanation;
     }
@@ -3058,8 +3059,8 @@ class PairMatcherImpl : public MatcherInterface<PairType> {
   }
 
  private:
-  void ExplainSuccess(const internal::string& first_explanation,
-                      const internal::string& second_explanation,
+  void ExplainSuccess(const std::string& first_explanation,
+                      const std::string& second_explanation,
                       MatchResultListener* listener) const {
     *listener << "whose both fields match";
     if (first_explanation != "") {
@@ -3166,7 +3167,7 @@ class ElementsAreMatcherImpl : public MatcherInterface<Container> {
     const bool listener_interested = listener->IsInterested();
 
     // explanations[i] is the explanation of the element at index i.
-    ::std::vector<internal::string> explanations(count());
+    ::std::vector<std::string> explanations(count());
     StlContainerReference stl_container = View::ConstReference(container);
     typename StlContainer::const_iterator it = stl_container.begin();
     size_t exam_pos = 0;
@@ -3225,7 +3226,7 @@ class ElementsAreMatcherImpl : public MatcherInterface<Container> {
     if (listener_interested) {
       bool reason_printed = false;
       for (size_t i = 0; i != count(); ++i) {
-        const internal::string& s = explanations[i];
+        const std::string& s = explanations[i];
         if (!s.empty()) {
           if (reason_printed) {
             *listener << ",\nand ";
@@ -3278,7 +3279,7 @@ class GTEST_API_ MatchMatrix {
 
   void Randomize();
 
-  string DebugString() const;
+  std::string DebugString() const;
 
  private:
   size_t SpaceIndex(size_t ilhs, size_t irhs) const {
@@ -3302,14 +3303,23 @@ typedef ::std::vector<ElementMatcherPair> ElementMatcherPairs;
 GTEST_API_ ElementMatcherPairs
 FindMaxBipartiteMatching(const MatchMatrix& g);
 
-GTEST_API_ bool FindPairing(const MatchMatrix& matrix,
-                            MatchResultListener* listener);
+struct UnorderedMatcherRequire {
+  enum Flags {
+    Superset = 1 << 0,
+    Subset = 1 << 1,
+    ExactMatch = Superset | Subset,
+  };
+};
 
 // Untyped base class for implementing UnorderedElementsAre.  By
 // putting logic that's not specific to the element type here, we
 // reduce binary bloat and increase compilation speed.
 class GTEST_API_ UnorderedElementsAreMatcherImplBase {
  protected:
+  explicit UnorderedElementsAreMatcherImplBase(
+      UnorderedMatcherRequire::Flags matcher_flags)
+      : match_flags_(matcher_flags) {}
+
   // A vector of matcher describers, one for each element matcher.
   // Does not own the describers (and thus can be used only when the
   // element matchers are alive).
@@ -3321,10 +3331,12 @@ class GTEST_API_ UnorderedElementsAreMatcherImplBase {
   // Describes the negation of this UnorderedElementsAre matcher.
   void DescribeNegationToImpl(::std::ostream* os) const;
 
-  bool VerifyAllElementsAndMatchersAreMatched(
-      const ::std::vector<string>& element_printouts,
-      const MatchMatrix& matrix,
-      MatchResultListener* listener) const;
+  bool VerifyMatchMatrix(const ::std::vector<std::string>& element_printouts,
+                         const MatchMatrix& matrix,
+                         MatchResultListener* listener) const;
+
+  bool FindPairing(const MatchMatrix& matrix,
+                   MatchResultListener* listener) const;
 
   MatcherDescriberVec& matcher_describers() {
     return matcher_describers_;
@@ -3334,13 +3346,17 @@ class GTEST_API_ UnorderedElementsAreMatcherImplBase {
     return Message() << n << " element" << (n == 1 ? "" : "s");
   }
 
+  UnorderedMatcherRequire::Flags match_flags() const { return match_flags_; }
+
  private:
+  UnorderedMatcherRequire::Flags match_flags_;
   MatcherDescriberVec matcher_describers_;
 
   GTEST_DISALLOW_ASSIGN_(UnorderedElementsAreMatcherImplBase);
 };
 
-// Implements unordered ElementsAre and unordered ElementsAreArray.
+// Implements UnorderedElementsAre, UnorderedElementsAreArray, IsSubsetOf, and
+// IsSupersetOf.
 template <typename Container>
 class UnorderedElementsAreMatcherImpl
     : public MatcherInterface<Container>,
@@ -3353,10 +3369,10 @@ class UnorderedElementsAreMatcherImpl
   typedef typename StlContainer::const_iterator StlContainerConstIterator;
   typedef typename StlContainer::value_type Element;
 
-  // Constructs the matcher from a sequence of element values or
-  // element matchers.
   template <typename InputIter>
-  UnorderedElementsAreMatcherImpl(InputIter first, InputIter last) {
+  UnorderedElementsAreMatcherImpl(UnorderedMatcherRequire::Flags matcher_flags,
+                                  InputIter first, InputIter last)
+      : UnorderedElementsAreMatcherImplBase(matcher_flags) {
     for (; first != last; ++first) {
       matchers_.push_back(MatcherCast<const Element&>(*first));
       matcher_describers().push_back(matchers_.back().GetDescriber());
@@ -3376,38 +3392,36 @@ class UnorderedElementsAreMatcherImpl
   virtual bool MatchAndExplain(Container container,
                                MatchResultListener* listener) const {
     StlContainerReference stl_container = View::ConstReference(container);
-    ::std::vector<string> element_printouts;
-    MatchMatrix matrix = AnalyzeElements(stl_container.begin(),
-                                         stl_container.end(),
-                                         &element_printouts,
-                                         listener);
+    ::std::vector<std::string> element_printouts;
+    MatchMatrix matrix =
+        AnalyzeElements(stl_container.begin(), stl_container.end(),
+                        &element_printouts, listener);
 
-    const size_t actual_count = matrix.LhsSize();
-    if (actual_count == 0 && matchers_.empty()) {
+    if (matrix.LhsSize() == 0 && matrix.RhsSize() == 0) {
       return true;
     }
-    if (actual_count != matchers_.size()) {
-      // The element count doesn't match.  If the container is empty,
-      // there's no need to explain anything as Google Mock already
-      // prints the empty container. Otherwise we just need to show
-      // how many elements there actually are.
-      if (actual_count != 0 && listener->IsInterested()) {
-        *listener << "which has " << Elements(actual_count);
+
+    if (match_flags() == UnorderedMatcherRequire::ExactMatch) {
+      if (matrix.LhsSize() != matrix.RhsSize()) {
+        // The element count doesn't match.  If the container is empty,
+        // there's no need to explain anything as Google Mock already
+        // prints the empty container. Otherwise we just need to show
+        // how many elements there actually are.
+        if (matrix.LhsSize() != 0 && listener->IsInterested()) {
+          *listener << "which has " << Elements(matrix.LhsSize());
+        }
+        return false;
       }
-      return false;
     }
 
-    return VerifyAllElementsAndMatchersAreMatched(element_printouts,
-                                                  matrix, listener) &&
+    return VerifyMatchMatrix(element_printouts, matrix, listener) &&
            FindPairing(matrix, listener);
   }
 
  private:
-  typedef ::std::vector<Matcher<const Element&> > MatcherVec;
-
   template <typename ElementIter>
   MatchMatrix AnalyzeElements(ElementIter elem_first, ElementIter elem_last,
-                              ::std::vector<string>* element_printouts,
+                              ::std::vector<std::string>* element_printouts,
                               MatchResultListener* listener) const {
     element_printouts->clear();
     ::std::vector<char> did_match;
@@ -3431,7 +3445,7 @@ class UnorderedElementsAreMatcherImpl
     return matrix;
   }
 
-  MatcherVec matchers_;
+  ::std::vector<Matcher<const Element&> > matchers_;
 
   GTEST_DISALLOW_ASSIGN_(UnorderedElementsAreMatcherImpl);
 };
@@ -3464,7 +3478,7 @@ class UnorderedElementsAreMatcher {
     TransformTupleValues(CastAndAppendTransform<const Element&>(), matchers_,
                          ::std::back_inserter(matchers));
     return MakeMatcher(new UnorderedElementsAreMatcherImpl<Container>(
-                           matchers.begin(), matchers.end()));
+        UnorderedMatcherRequire::ExactMatch, matchers.begin(), matchers.end()));
   }
 
  private:
@@ -3497,24 +3511,23 @@ class ElementsAreMatcher {
   GTEST_DISALLOW_ASSIGN_(ElementsAreMatcher);
 };
 
-// Implements UnorderedElementsAreArray().
+// Implements UnorderedElementsAreArray(), IsSubsetOf(), and IsSupersetOf().
 template <typename T>
 class UnorderedElementsAreArrayMatcher {
  public:
-  UnorderedElementsAreArrayMatcher() {}
-
   template <typename Iter>
-  UnorderedElementsAreArrayMatcher(Iter first, Iter last)
-      : matchers_(first, last) {}
+  UnorderedElementsAreArrayMatcher(UnorderedMatcherRequire::Flags match_flags,
+                                   Iter first, Iter last)
+      : match_flags_(match_flags), matchers_(first, last) {}
 
   template <typename Container>
   operator Matcher<Container>() const {
-    return MakeMatcher(
-        new UnorderedElementsAreMatcherImpl<Container>(matchers_.begin(),
-                                                       matchers_.end()));
+    return MakeMatcher(new UnorderedElementsAreMatcherImpl<Container>(
+        match_flags_, matchers_.begin(), matchers_.end()));
   }
 
  private:
+  UnorderedMatcherRequire::Flags match_flags_;
   ::std::vector<T> matchers_;
 
   GTEST_DISALLOW_ASSIGN_(UnorderedElementsAreArrayMatcher);
@@ -3619,13 +3632,73 @@ BoundSecondMatcher<Tuple2Matcher, Second> MatcherBindSecond(
 // 'negation' is false; otherwise returns the description of the
 // negation of the matcher.  'param_values' contains a list of strings
 // that are the print-out of the matcher's parameters.
-GTEST_API_ string FormatMatcherDescription(bool negation,
-                                           const char* matcher_name,
-                                           const Strings& param_values);
+GTEST_API_ std::string FormatMatcherDescription(bool negation,
+                                                const char* matcher_name,
+                                                const Strings& param_values);
+
+namespace variant_matcher {
+// Overloads to allow VariantMatcher to do proper ADL lookup.
+template <typename T>
+void holds_alternative() {}
+template <typename T>
+void get() {}
+
+// Implements a matcher that checks the value of a variant<> type variable.
+template <typename T>
+class VariantMatcher {
+ public:
+  explicit VariantMatcher(::testing::Matcher<const T&> matcher)
+      : matcher_(internal::move(matcher)) {}
+
+  template <typename Variant>
+  bool MatchAndExplain(const Variant& value,
+                       ::testing::MatchResultListener* listener) const {
+    if (!listener->IsInterested()) {
+      return holds_alternative<T>(value) && matcher_.Matches(get<T>(value));
+    }
+
+    if (!holds_alternative<T>(value)) {
+      *listener << "whose value is not of type '" << GetTypeName() << "'";
+      return false;
+    }
+
+    const T& elem = get<T>(value);
+    StringMatchResultListener elem_listener;
+    const bool match = matcher_.MatchAndExplain(elem, &elem_listener);
+    *listener << "whose value " << PrintToString(elem)
+              << (match ? " matches" : " doesn't match");
+    PrintIfNotEmpty(elem_listener.str(), listener->stream());
+    return match;
+  }
+
+  void DescribeTo(std::ostream* os) const {
+    *os << "is a variant<> with value of type '" << GetTypeName()
+        << "' and the value ";
+    matcher_.DescribeTo(os);
+  }
+
+  void DescribeNegationTo(std::ostream* os) const {
+    *os << "is a variant<> with value of type other than '" << GetTypeName()
+        << "' or the value ";
+    matcher_.DescribeNegationTo(os);
+  }
+
+ private:
+  static string GetTypeName() {
+#if GTEST_HAS_RTTI
+    return internal::GetTypeName<T>();
+#endif
+    return "the element type";
+  }
+
+  const ::testing::Matcher<const T&> matcher_;
+};
+
+}  // namespace variant_matcher
 
 }  // namespace internal
 
-// ElementsAreArray(first, last)
+// ElementsAreArray(iterator_first, iterator_last)
 // ElementsAreArray(pointer, count)
 // ElementsAreArray(array)
 // ElementsAreArray(container)
@@ -3674,20 +3747,26 @@ ElementsAreArray(::std::initializer_list<T> xs) {
 }
 #endif
 
-// UnorderedElementsAreArray(first, last)
+// UnorderedElementsAreArray(iterator_first, iterator_last)
 // UnorderedElementsAreArray(pointer, count)
 // UnorderedElementsAreArray(array)
 // UnorderedElementsAreArray(container)
 // UnorderedElementsAreArray({ e1, e2, ..., en })
 //
-// The UnorderedElementsAreArray() functions are like
-// ElementsAreArray(...), but allow matching the elements in any order.
+// UnorderedElementsAreArray() verifies that a bijective mapping onto a
+// collection of matchers exists.
+//
+// The matchers can be specified as an array, a pointer and count, a container,
+// an initializer list, or an STL iterator range. In each of these cases, the
+// underlying matchers can be either values or matchers.
+
 template <typename Iter>
 inline internal::UnorderedElementsAreArrayMatcher<
     typename ::std::iterator_traits<Iter>::value_type>
 UnorderedElementsAreArray(Iter first, Iter last) {
   typedef typename ::std::iterator_traits<Iter>::value_type T;
-  return internal::UnorderedElementsAreArrayMatcher<T>(first, last);
+  return internal::UnorderedElementsAreArrayMatcher<T>(
+      internal::UnorderedMatcherRequire::ExactMatch, first, last);
 }
 
 template <typename T>
@@ -3729,7 +3808,9 @@ UnorderedElementsAreArray(::std::initializer_list<T> xs) {
 const internal::AnythingMatcher _ = {};
 // Creates a matcher that matches any value of the given type T.
 template <typename T>
-inline Matcher<T> A() { return MakeMatcher(new internal::AnyMatcherImpl<T>()); }
+inline Matcher<T> A() {
+  return Matcher<T>(new internal::AnyMatcherImpl<T>());
+}
 
 // Creates a matcher that matches any value of the given type T.
 template <typename T>
@@ -3909,11 +3990,13 @@ inline PolymorphicMatcher<
 //   Property(&Foo::str, StartsWith("hi"))
 // matches a Foo object x iff x.str() starts with "hi".
 template <typename Class, typename PropertyType, typename PropertyMatcher>
-inline PolymorphicMatcher<
-  internal::PropertyMatcher<Class, PropertyType> > Property(
-    PropertyType (Class::*property)() const, const PropertyMatcher& matcher) {
+inline PolymorphicMatcher<internal::PropertyMatcher<
+    Class, PropertyType, PropertyType (Class::*)() const> >
+Property(PropertyType (Class::*property)() const,
+         const PropertyMatcher& matcher) {
   return MakePolymorphicMatcher(
-      internal::PropertyMatcher<Class, PropertyType>(
+      internal::PropertyMatcher<Class, PropertyType,
+                                PropertyType (Class::*)() const>(
           property,
           MatcherCast<GTEST_REFERENCE_TO_CONST_(PropertyType)>(matcher)));
   // The call to MatcherCast() is required for supporting inner
@@ -3921,6 +4004,21 @@ inline PolymorphicMatcher<
   //   Property(&Foo::bar, m)
   // to compile where bar() returns an int32 and m is a matcher for int64.
 }
+
+#if GTEST_LANG_CXX11
+// The same as above but for reference-qualified member functions.
+template <typename Class, typename PropertyType, typename PropertyMatcher>
+inline PolymorphicMatcher<internal::PropertyMatcher<
+    Class, PropertyType, PropertyType (Class::*)() const &> >
+Property(PropertyType (Class::*property)() const &,
+         const PropertyMatcher& matcher) {
+  return MakePolymorphicMatcher(
+      internal::PropertyMatcher<Class, PropertyType,
+                                PropertyType (Class::*)() const &>(
+          property,
+          MatcherCast<GTEST_REFERENCE_TO_CONST_(PropertyType)>(matcher)));
+}
+#endif
 
 // Creates a matcher that matches an object iff the result of applying
 // a callable to x matches 'matcher'.
@@ -3951,53 +4049,52 @@ internal::ResultOfMatcher<Callable> ResultOf(
 // String matchers.
 
 // Matches a string equal to str.
-inline PolymorphicMatcher<internal::StrEqualityMatcher<internal::string> >
-    StrEq(const internal::string& str) {
-  return MakePolymorphicMatcher(internal::StrEqualityMatcher<internal::string>(
-      str, true, true));
+inline PolymorphicMatcher<internal::StrEqualityMatcher<std::string> > StrEq(
+    const std::string& str) {
+  return MakePolymorphicMatcher(
+      internal::StrEqualityMatcher<std::string>(str, true, true));
 }
 
 // Matches a string not equal to str.
-inline PolymorphicMatcher<internal::StrEqualityMatcher<internal::string> >
-    StrNe(const internal::string& str) {
-  return MakePolymorphicMatcher(internal::StrEqualityMatcher<internal::string>(
-      str, false, true));
+inline PolymorphicMatcher<internal::StrEqualityMatcher<std::string> > StrNe(
+    const std::string& str) {
+  return MakePolymorphicMatcher(
+      internal::StrEqualityMatcher<std::string>(str, false, true));
 }
 
 // Matches a string equal to str, ignoring case.
-inline PolymorphicMatcher<internal::StrEqualityMatcher<internal::string> >
-    StrCaseEq(const internal::string& str) {
-  return MakePolymorphicMatcher(internal::StrEqualityMatcher<internal::string>(
-      str, true, false));
+inline PolymorphicMatcher<internal::StrEqualityMatcher<std::string> > StrCaseEq(
+    const std::string& str) {
+  return MakePolymorphicMatcher(
+      internal::StrEqualityMatcher<std::string>(str, true, false));
 }
 
 // Matches a string not equal to str, ignoring case.
-inline PolymorphicMatcher<internal::StrEqualityMatcher<internal::string> >
-    StrCaseNe(const internal::string& str) {
-  return MakePolymorphicMatcher(internal::StrEqualityMatcher<internal::string>(
-      str, false, false));
+inline PolymorphicMatcher<internal::StrEqualityMatcher<std::string> > StrCaseNe(
+    const std::string& str) {
+  return MakePolymorphicMatcher(
+      internal::StrEqualityMatcher<std::string>(str, false, false));
 }
 
 // Creates a matcher that matches any string, std::string, or C string
 // that contains the given substring.
-inline PolymorphicMatcher<internal::HasSubstrMatcher<internal::string> >
-    HasSubstr(const internal::string& substring) {
-  return MakePolymorphicMatcher(internal::HasSubstrMatcher<internal::string>(
-      substring));
+inline PolymorphicMatcher<internal::HasSubstrMatcher<std::string> > HasSubstr(
+    const std::string& substring) {
+  return MakePolymorphicMatcher(
+      internal::HasSubstrMatcher<std::string>(substring));
 }
 
 // Matches a string that starts with 'prefix' (case-sensitive).
-inline PolymorphicMatcher<internal::StartsWithMatcher<internal::string> >
-    StartsWith(const internal::string& prefix) {
-  return MakePolymorphicMatcher(internal::StartsWithMatcher<internal::string>(
-      prefix));
+inline PolymorphicMatcher<internal::StartsWithMatcher<std::string> > StartsWith(
+    const std::string& prefix) {
+  return MakePolymorphicMatcher(
+      internal::StartsWithMatcher<std::string>(prefix));
 }
 
 // Matches a string that ends with 'suffix' (case-sensitive).
-inline PolymorphicMatcher<internal::EndsWithMatcher<internal::string> >
-    EndsWith(const internal::string& suffix) {
-  return MakePolymorphicMatcher(internal::EndsWithMatcher<internal::string>(
-      suffix));
+inline PolymorphicMatcher<internal::EndsWithMatcher<std::string> > EndsWith(
+    const std::string& suffix) {
+  return MakePolymorphicMatcher(internal::EndsWithMatcher<std::string>(suffix));
 }
 
 // Matches a string that fully matches regular expression 'regex'.
@@ -4007,7 +4104,7 @@ inline PolymorphicMatcher<internal::MatchesRegexMatcher> MatchesRegex(
   return MakePolymorphicMatcher(internal::MatchesRegexMatcher(regex, true));
 }
 inline PolymorphicMatcher<internal::MatchesRegexMatcher> MatchesRegex(
-    const internal::string& regex) {
+    const std::string& regex) {
   return MatchesRegex(new internal::RE(regex));
 }
 
@@ -4018,7 +4115,7 @@ inline PolymorphicMatcher<internal::MatchesRegexMatcher> ContainsRegex(
   return MakePolymorphicMatcher(internal::MatchesRegexMatcher(regex, false));
 }
 inline PolymorphicMatcher<internal::MatchesRegexMatcher> ContainsRegex(
-    const internal::string& regex) {
+    const std::string& regex) {
   return ContainsRegex(new internal::RE(regex));
 }
 
@@ -4283,6 +4380,128 @@ inline internal::ContainsMatcher<M> Contains(M matcher) {
   return internal::ContainsMatcher<M>(matcher);
 }
 
+// IsSupersetOf(iterator_first, iterator_last)
+// IsSupersetOf(pointer, count)
+// IsSupersetOf(array)
+// IsSupersetOf(container)
+// IsSupersetOf({e1, e2, ..., en})
+//
+// IsSupersetOf() verifies that a surjective partial mapping onto a collection
+// of matchers exists. In other words, a container matches
+// IsSupersetOf({e1, ..., en}) if and only if there is a permutation
+// {y1, ..., yn} of some of the container's elements where y1 matches e1,
+// ..., and yn matches en. Obviously, the size of the container must be >= n
+// in order to have a match. Examples:
+//
+// - {1, 2, 3} matches IsSupersetOf({Ge(3), Ne(0)}), as 3 matches Ge(3) and
+//   1 matches Ne(0).
+// - {1, 2} doesn't match IsSupersetOf({Eq(1), Lt(2)}), even though 1 matches
+//   both Eq(1) and Lt(2). The reason is that different matchers must be used
+//   for elements in different slots of the container.
+// - {1, 1, 2} matches IsSupersetOf({Eq(1), Lt(2)}), as (the first) 1 matches
+//   Eq(1) and (the second) 1 matches Lt(2).
+// - {1, 2, 3} matches IsSupersetOf(Gt(1), Gt(1)), as 2 matches (the first)
+//   Gt(1) and 3 matches (the second) Gt(1).
+//
+// The matchers can be specified as an array, a pointer and count, a container,
+// an initializer list, or an STL iterator range. In each of these cases, the
+// underlying matchers can be either values or matchers.
+
+template <typename Iter>
+inline internal::UnorderedElementsAreArrayMatcher<
+    typename ::std::iterator_traits<Iter>::value_type>
+IsSupersetOf(Iter first, Iter last) {
+  typedef typename ::std::iterator_traits<Iter>::value_type T;
+  return internal::UnorderedElementsAreArrayMatcher<T>(
+      internal::UnorderedMatcherRequire::Superset, first, last);
+}
+
+template <typename T>
+inline internal::UnorderedElementsAreArrayMatcher<T> IsSupersetOf(
+    const T* pointer, size_t count) {
+  return IsSupersetOf(pointer, pointer + count);
+}
+
+template <typename T, size_t N>
+inline internal::UnorderedElementsAreArrayMatcher<T> IsSupersetOf(
+    const T (&array)[N]) {
+  return IsSupersetOf(array, N);
+}
+
+template <typename Container>
+inline internal::UnorderedElementsAreArrayMatcher<
+    typename Container::value_type>
+IsSupersetOf(const Container& container) {
+  return IsSupersetOf(container.begin(), container.end());
+}
+
+#if GTEST_HAS_STD_INITIALIZER_LIST_
+template <typename T>
+inline internal::UnorderedElementsAreArrayMatcher<T> IsSupersetOf(
+    ::std::initializer_list<T> xs) {
+  return IsSupersetOf(xs.begin(), xs.end());
+}
+#endif
+
+// IsSubsetOf(iterator_first, iterator_last)
+// IsSubsetOf(pointer, count)
+// IsSubsetOf(array)
+// IsSubsetOf(container)
+// IsSubsetOf({e1, e2, ..., en})
+//
+// IsSubsetOf() verifies that an injective mapping onto a collection of matchers
+// exists.  In other words, a container matches IsSubsetOf({e1, ..., en}) if and
+// only if there is a subset of matchers {m1, ..., mk} which would match the
+// container using UnorderedElementsAre.  Obviously, the size of the container
+// must be <= n in order to have a match. Examples:
+//
+// - {1} matches IsSubsetOf({Gt(0), Lt(0)}), as 1 matches Gt(0).
+// - {1, -1} matches IsSubsetOf({Lt(0), Gt(0)}), as 1 matches Gt(0) and -1
+//   matches Lt(0).
+// - {1, 2} doesn't matches IsSubsetOf({Gt(0), Lt(0)}), even though 1 and 2 both
+//   match Gt(0). The reason is that different matchers must be used for
+//   elements in different slots of the container.
+//
+// The matchers can be specified as an array, a pointer and count, a container,
+// an initializer list, or an STL iterator range. In each of these cases, the
+// underlying matchers can be either values or matchers.
+
+template <typename Iter>
+inline internal::UnorderedElementsAreArrayMatcher<
+    typename ::std::iterator_traits<Iter>::value_type>
+IsSubsetOf(Iter first, Iter last) {
+  typedef typename ::std::iterator_traits<Iter>::value_type T;
+  return internal::UnorderedElementsAreArrayMatcher<T>(
+      internal::UnorderedMatcherRequire::Subset, first, last);
+}
+
+template <typename T>
+inline internal::UnorderedElementsAreArrayMatcher<T> IsSubsetOf(
+    const T* pointer, size_t count) {
+  return IsSubsetOf(pointer, pointer + count);
+}
+
+template <typename T, size_t N>
+inline internal::UnorderedElementsAreArrayMatcher<T> IsSubsetOf(
+    const T (&array)[N]) {
+  return IsSubsetOf(array, N);
+}
+
+template <typename Container>
+inline internal::UnorderedElementsAreArrayMatcher<
+    typename Container::value_type>
+IsSubsetOf(const Container& container) {
+  return IsSubsetOf(container.begin(), container.end());
+}
+
+#if GTEST_HAS_STD_INITIALIZER_LIST_
+template <typename T>
+inline internal::UnorderedElementsAreArrayMatcher<T> IsSubsetOf(
+    ::std::initializer_list<T> xs) {
+  return IsSubsetOf(xs.begin(), xs.end());
+}
+#endif
+
 // Matches an STL-style container or a native array that contains only
 // elements matching the given value or matcher.
 //
@@ -4380,6 +4599,17 @@ inline internal::AnyOfMatcher<Args...> AnyOf(const Args&... matchers) {
 //   EXPECT_CALL(foo, Bar(_, _)).With(Eq());
 template <typename InnerMatcher>
 inline InnerMatcher AllArgs(const InnerMatcher& matcher) { return matcher; }
+
+// Returns a matcher that matches the value of a variant<> type variable.
+// The matcher implementation uses ADL to find the holds_alternative and get
+// functions.
+// It is compatible with std::variant.
+template <typename T>
+PolymorphicMatcher<internal::variant_matcher::VariantMatcher<T> > VariantWith(
+    const Matcher<const T&>& matcher) {
+  return MakePolymorphicMatcher(
+      internal::variant_matcher::VariantMatcher<T>(matcher));
+}
 
 // These macros allow using matchers to check values in Google Test
 // tests.  ASSERT_THAT(value, matcher) and EXPECT_THAT(value, matcher)
