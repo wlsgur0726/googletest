@@ -26,8 +26,7 @@
 // THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-//
-// Author: wan@google.com (Zhanyong Wan)
+
 
 // Google Mock - a framework for writing C++ mock classes.
 //
@@ -44,7 +43,15 @@
 #include "gmock/internal/gmock-port.h"
 #include "gtest/gtest.h"
 #include "gtest/gtest-spi.h"
+
+// Indicates that this translation unit is part of Google Test's
+// implementation.  It must come before gtest-internal-inl.h is
+// included, or there will be a compiler error.  This trick is to
+// prevent a user from accidentally including gtest-internal-inl.h in
+// their code.
+#define GTEST_IMPLEMENTATION_ 1
 #include "src/gtest-internal-inl.h"
+#undef GTEST_IMPLEMENTATION_
 
 #if GTEST_OS_CYGWIN
 # include <sys/types.h>  // For ssize_t. NOLINT
@@ -60,6 +67,26 @@ namespace testing {
 namespace internal {
 
 namespace {
+
+TEST(JoinAsTupleTest, JoinsEmptyTuple) {
+  EXPECT_EQ("", JoinAsTuple(Strings()));
+}
+
+TEST(JoinAsTupleTest, JoinsOneTuple) {
+  const char* fields[] = {"1"};
+  EXPECT_EQ("1", JoinAsTuple(Strings(fields, fields + 1)));
+}
+
+TEST(JoinAsTupleTest, JoinsTwoTuple) {
+  const char* fields[] = {"1", "a"};
+  EXPECT_EQ("(1, a)", JoinAsTuple(Strings(fields, fields + 2)));
+}
+
+TEST(JoinAsTupleTest, JoinsTenTuple) {
+  const char* fields[] = {"1", "2", "3", "4", "5", "6", "7", "8", "9", "10"};
+  EXPECT_EQ("(1, 2, 3, 4, 5, 6, 7, 8, 9, 10)",
+            JoinAsTuple(Strings(fields, fields + 10)));
+}
 
 TEST(ConvertIdentifierNameToWordsTest, WorksWhenNameContainsNoWord) {
   EXPECT_EQ("", ConvertIdentifierNameToWords(""));
@@ -96,8 +123,6 @@ TEST(ConvertIdentifierNameToWordsTest, WorksWhenNameIsMixture) {
 }
 
 TEST(PointeeOfTest, WorksForSmartPointers) {
-  CompileAssertTypesEqual<const char,
-      PointeeOf<internal::linked_ptr<const char> >::type>();
 #if GTEST_HAS_STD_UNIQUE_PTR_
   CompileAssertTypesEqual<int, PointeeOf<std::unique_ptr<int> >::type>();
 #endif  // GTEST_HAS_STD_UNIQUE_PTR_
@@ -124,16 +149,12 @@ TEST(GetRawPointerTest, WorksForSmartPointers) {
   const std::shared_ptr<double> p2(raw_p2);
   EXPECT_EQ(raw_p2, GetRawPointer(p2));
 #endif  // GTEST_HAS_STD_SHARED_PTR_
-
-  const char* const raw_p4 = new const char('a');  // NOLINT
-  const internal::linked_ptr<const char> p4(raw_p4);
-  EXPECT_EQ(raw_p4, GetRawPointer(p4));
 }
 
 TEST(GetRawPointerTest, WorksForRawPointers) {
-  int* p = NULL;
+  int* p = nullptr;
   // Don't use EXPECT_EQ as no NULL-testing magic on Symbian.
-  EXPECT_TRUE(NULL == GetRawPointer(p));
+  EXPECT_TRUE(nullptr == GetRawPointer(p));
   int n = 1;
   EXPECT_EQ(&n, GetRawPointer(&n));
 }
@@ -281,26 +302,23 @@ TEST(LosslessArithmeticConvertibleTest, FloatingPointToFloatingPoint) {
 // Tests the TupleMatches() template function.
 
 TEST(TupleMatchesTest, WorksForSize0) {
-  tuple<> matchers;
-  tuple<> values;
+  std::tuple<> matchers;
+  std::tuple<> values;
 
   EXPECT_TRUE(TupleMatches(matchers, values));
 }
 
 TEST(TupleMatchesTest, WorksForSize1) {
-  tuple<Matcher<int> > matchers(Eq(1));
-  tuple<int> values1(1),
-      values2(2);
+  std::tuple<Matcher<int> > matchers(Eq(1));
+  std::tuple<int> values1(1), values2(2);
 
   EXPECT_TRUE(TupleMatches(matchers, values1));
   EXPECT_FALSE(TupleMatches(matchers, values2));
 }
 
 TEST(TupleMatchesTest, WorksForSize2) {
-  tuple<Matcher<int>, Matcher<char> > matchers(Eq(1), Eq('a'));
-  tuple<int, char> values1(1, 'a'),
-      values2(1, 'b'),
-      values3(2, 'a'),
+  std::tuple<Matcher<int>, Matcher<char> > matchers(Eq(1), Eq('a'));
+  std::tuple<int, char> values1(1, 'a'), values2(1, 'b'), values3(2, 'a'),
       values4(2, 'b');
 
   EXPECT_TRUE(TupleMatches(matchers, values1));
@@ -310,10 +328,11 @@ TEST(TupleMatchesTest, WorksForSize2) {
 }
 
 TEST(TupleMatchesTest, WorksForSize5) {
-  tuple<Matcher<int>, Matcher<char>, Matcher<bool>, Matcher<long>,  // NOLINT
-        Matcher<std::string> >
+  std::tuple<Matcher<int>, Matcher<char>, Matcher<bool>,
+             Matcher<long>,  // NOLINT
+             Matcher<std::string> >
       matchers(Eq(1), Eq('a'), Eq(true), Eq(2L), Eq("hi"));
-  tuple<int, char, bool, long, std::string>  // NOLINT
+  std::tuple<int, char, bool, long, std::string>  // NOLINT
       values1(1, 'a', true, 2L, "hi"), values2(1, 'a', true, 2L, "hello"),
       values3(2, 'a', true, 2L, "hi");
 
@@ -465,7 +484,7 @@ TEST(LogTest, NoSkippingStackFrameInOptMode) {
               AllOf(Ge(expected_skip_count), Le(expected_skip_count + 10)));
 
   // Restores the default OS stack trace getter.
-  GetUnitTestImpl()->set_os_stack_trace_getter(NULL);
+  GetUnitTestImpl()->set_os_stack_trace_getter(nullptr);
 }
 
 // Tests that all logs are printed when the value of the
@@ -659,22 +678,25 @@ TEST(StlContainerViewTest, WorksForStaticNativeArray) {
 
 TEST(StlContainerViewTest, WorksForDynamicNativeArray) {
   StaticAssertTypeEq<NativeArray<int>,
-      StlContainerView<tuple<const int*, size_t> >::type>();
-  StaticAssertTypeEq<NativeArray<double>,
-      StlContainerView<tuple<linked_ptr<double>, int> >::type>();
+                     StlContainerView<std::tuple<const int*, size_t> >::type>();
+  StaticAssertTypeEq<
+      NativeArray<double>,
+      StlContainerView<std::tuple<std::shared_ptr<double>, int> >::type>();
 
-  StaticAssertTypeEq<const NativeArray<int>,
-      StlContainerView<tuple<const int*, int> >::const_reference>();
+  StaticAssertTypeEq<
+      const NativeArray<int>,
+      StlContainerView<std::tuple<const int*, int> >::const_reference>();
 
   int a1[3] = { 0, 1, 2 };
   const int* const p1 = a1;
-  NativeArray<int> a2 = StlContainerView<tuple<const int*, int> >::
-      ConstReference(make_tuple(p1, 3));
+  NativeArray<int> a2 =
+      StlContainerView<std::tuple<const int*, int> >::ConstReference(
+          std::make_tuple(p1, 3));
   EXPECT_EQ(3U, a2.size());
   EXPECT_EQ(a1, a2.begin());
 
-  const NativeArray<int> a3 = StlContainerView<tuple<int*, size_t> >::
-      Copy(make_tuple(static_cast<int*>(a1), 3));
+  const NativeArray<int> a3 = StlContainerView<std::tuple<int*, size_t> >::Copy(
+      std::make_tuple(static_cast<int*>(a1), 3));
   ASSERT_EQ(3U, a3.size());
   EXPECT_EQ(0, a3.begin()[0]);
   EXPECT_EQ(1, a3.begin()[1]);

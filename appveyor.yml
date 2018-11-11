@@ -20,13 +20,10 @@ environment:
     - compiler: msvc-14-seh
       generator: "Visual Studio 14 2015 Win64"
 
-    - compiler: gcc-5.3.0-posix
-      generator: "MinGW Makefiles"
-      cxx_path: 'C:\mingw-w64\i686-5.3.0-posix-dwarf-rt_v4-rev0\mingw32\bin'
-
     - compiler: gcc-6.3.0-posix
       generator: "MinGW Makefiles"
       cxx_path: 'C:\mingw-w64\i686-6.3.0-posix-dwarf-rt_v5-rev1\mingw32\bin'
+      enabled_on_pr: yes
 
 configuration:
   - Debug
@@ -38,6 +35,8 @@ install:
 - ps: |
     Write-Output "Compiler: $env:compiler"
     Write-Output "Generator: $env:generator"
+    Write-Output "Env:Configuation: $env:configuration"
+    Write-Output "Env: $env"
     if (-not (Test-Path env:APPVEYOR_PULL_REQUEST_NUMBER)) {
       Write-Output "This is *NOT* a pull request build"
     } else {
@@ -78,6 +77,11 @@ build_script:
         throw "Exec: $ErrorMessage"
     }
 
+
+skip_commits:
+  files:
+    - '**/*.md'
+
 test_script:
 - ps: |
     # Only enable some builds for pull requests, the AppVeyor queue is too long.
@@ -87,7 +91,7 @@ test_script:
     if ($env:generator -eq "MinGW Makefiles") {
         return # No test available for MinGW
     }
-    & ctest -C $env:configuration --timeout 300 --output-on-failure
+    & ctest -C $env:configuration --timeout 600 --output-on-failure
     if ($LastExitCode -ne 0) {
         throw "Exec: $ErrorMessage"
     }
